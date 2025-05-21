@@ -3,6 +3,10 @@ import re
 import os
 
 folder_path = os.path.dirname(os.path.abspath(__file__))
+input_dir = os.path.join(folder_path, 'input')
+if not os.path.exists(input_dir):
+    os.makedirs(input_dir)
+
 output_dir = os.path.join(folder_path, 'output')
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -59,9 +63,9 @@ def clean_phone(number):
     
     return result
 
-for filename in os.listdir(folder_path):
+for filename in os.listdir(input_dir):
     if filename.endswith(".xlsx"):
-        file_path = os.path.join(folder_path, filename)
+        file_path = os.path.join(input_dir, filename)
         try:
             print(f"Processing {filename}...")
             
@@ -127,7 +131,8 @@ for filename in os.listdir(folder_path):
             
             # Save back to Excel
             output_file = f"cleaned_{filename}"
-            df.to_excel(os.path.join(output_dir, output_file), index=False)
+            output_file = os.path.join(output_dir, output_file)
+            df.to_excel(output_file, index=False)
             print(f"  Successfully processed {len(df)} records in {filename}. Output saved to {output_file}")
             
         except Exception as e:
