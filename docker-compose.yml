@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  phone-processor:
+    build: .
+    volumes:
+      - ./:/app
+      - ./output:/app/output
+    command: phonenumber.py
