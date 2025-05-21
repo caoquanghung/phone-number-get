@@ -5,17 +5,7 @@
 
 ## Chạy file trên Windows
 1. Cài đặt Docker Desktop cho Windows (theo hướng dẫn ở trên)
-2. Nếu muốn sử dụng file batch script, tạo file `run.bat` với nội dung:
-```batch
-@echo off
-echo Starting phone number processing...
-
-docker-compose build
-docker-compose up
-
-echo Processing complete! Check the output directory for results.
-pause
-```
+2. Click đúp vào file `run.bat` để chạy.
 
 ### Lưu ý quan trọng:
 1. Docker Desktop phải được chạy trước khi nháy đúp vào file BAT
