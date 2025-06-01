@@ -78,7 +78,10 @@ def clean_phone(number):
     digits = convert_old_prefix(digits)
     
     # Format the phone number with international code
-    result = '+84' + digits[1:]
+    if digits.startswith('0'):
+        result = '+84' + digits[1:]
+    else:
+        result = '+84' + digits
     
     # Add back any parentheses content
     if parentheses_text:
