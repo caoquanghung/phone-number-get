@@ -24,25 +24,29 @@ def clean_phone(number):
         # Process each part separately and pick the first valid number
         parts = number_str.split('-')
         for part in parts:
+            # Pre-processing: Normalize the phone number format
             digits_only = re.sub(r'\D', '', part)
             if len(digits_only) >= 9:  # Found a valid-length number
+                # Normalize to a standard format without prefix
+                # Remove country code if present
                 if digits_only.startswith('84'):
-                    # Convert from +84 format to 0 format for prefix conversion
-                    digits_only = '0' + digits_only[2:]
-                elif not digits_only.startswith('0'):
-                    digits_only = '0' + digits_only
-
+                    digits_only = digits_only[2:]
+                # Remove leading zero if present
+                if digits_only.startswith('0'):
+                    digits_only = digits_only[1:]
+                
+                # Now add back the leading zero for consistent format
+                digits_only = '0' + digits_only
+                
                 # Apply prefix conversion for Vietnamese numbers
                 digits_only = convert_old_prefix(digits_only)
                 
-                # Convert back to international format and return just this number
-                if digits_only.startswith('0'):
-                    return '+84' + digits_only[1:]
-                elif not digits_only.startswith('+84'):
-                    return '+84' + digits_only
+                # Convert to international format
+                result = '+84' + digits_only[1:]
+                return result
         
         # If we get here, no valid phone number was found
-        return "WARNING: No valid phone number found"
+        return "WARNING"
     
     # Extract any parentheses content to preserve
     parentheses_match = re.search(r'(\([^)]*\))', number_str)
@@ -59,20 +63,22 @@ def clean_phone(number):
     if len(digits) < 9:
         return f"WARNING"
     
-    # Convert to local format for prefix conversion
+    # PRE-PROCESSING STAGE: Normalize the phone number format
+    # Remove country code if present
     if digits.startswith('84'):
-        digits = '0' + digits[2:]
-    if not digits.startswith('0'): 
-        digits = '0' + digits
-        
+        digits = digits[2:]
+    # Remove leading zero if present
+    if digits.startswith('0'):
+        digits = digits[1:]
+    
+    # Now add back the standard leading zero format
+    digits = '0' + digits
+    
     # Apply prefix conversion
     digits = convert_old_prefix(digits)
     
     # Format the phone number with international code
-    if digits.startswith('0'):
-        result = '+84' + digits[1:]
-    elif not digits.startswith('+84'):
-        result = '+84' + digits
+    result = '+84' + digits[1:]
     
     # Add back any parentheses content
     if parentheses_text:
