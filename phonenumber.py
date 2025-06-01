@@ -21,20 +21,28 @@ def clean_phone(number):
     
     # Check if there are multiple numbers separated by '-'
     if '-' in number_str and any(len(re.sub(r'\D', '', part)) >= 9 for part in number_str.split('-')):
-        # Process each part separately while keeping the '-' separator
+        # Process each part separately and pick the first valid number
         parts = number_str.split('-')
-        cleaned_parts = []
         for part in parts:
             digits_only = re.sub(r'\D', '', part)
-            if len(digits_only) >= 9:  # Only format valid-length numbers
+            if len(digits_only) >= 9:  # Found a valid-length number
                 if digits_only.startswith('84'):
-                    cleaned_parts.append('+' + digits_only)
-                else:
-                    cleaned_parts.append('+84' + digits_only.lstrip('0'))
-            else:
-                cleaned_parts.append(part.strip())  # Keep as is if too short
+                    # Convert from +84 format to 0 format for prefix conversion
+                    digits_only = '0' + digits_only[2:]
+                elif not digits_only.startswith('0'):
+                    digits_only = '0' + digits_only
+
+                # Apply prefix conversion for Vietnamese numbers
+                digits_only = convert_old_prefix(digits_only)
+                
+                # Convert back to international format and return just this number
+                if digits_only.startswith('0'):
+                    return '+84' + digits_only[1:]
+                elif not digits_only.startswith('+84'):
+                    return '+84' + digits_only
         
-        return ' - '.join(cleaned_parts)
+        # If we get here, no valid phone number was found
+        return "WARNING: No valid phone number found"
     
     # Extract any parentheses content to preserve
     parentheses_match = re.search(r'(\([^)]*\))', number_str)
@@ -51,17 +59,50 @@ def clean_phone(number):
     if len(digits) < 9:
         return f"WARNING"
     
-    # Format the phone number
+    # Convert to local format for prefix conversion
     if digits.startswith('84'):
-        result = '+' + digits
-    else:
-        result = '+84' + digits.lstrip('0')
+        digits = '0' + digits[2:]
+    if not digits.startswith('0'): 
+        digits = '0' + digits
+        
+    # Apply prefix conversion
+    digits = convert_old_prefix(digits)
+    
+    # Format the phone number with international code
+    if digits.startswith('0'):
+        result = '+84' + digits[1:]
+    elif not digits.startswith('+84'):
+        result = '+84' + digits
     
     # Add back any parentheses content
     if parentheses_text:
         result += ' ' + parentheses_text
     
     return result
+
+# Function to convert old number prefixes to new ones
+def convert_old_prefix(phone_number):
+    # Ensure phone_number is a string
+    phone_number = str(phone_number)
+    
+    # Dictionary mapping old prefixes to new prefixes
+    prefix_map = {
+        '0162': '032', '0163': '033', '0164': '034', '0165': '035',
+        '0166': '036', '0167': '037', '0168': '038', '0169': '039',
+        '0120': '070', '0121': '079', '0122': '077', '0126': '076',
+        '0128': '078', '0123': '083', '0124': '084', '0125': '085',
+        '0127': '081', '0129': '082', '0188': '058', '0186': '056',
+        '0199': '059'
+    }
+    
+    # Check if phone number starts with any old prefix
+    for old_prefix, new_prefix in prefix_map.items():
+        if phone_number.startswith(old_prefix):
+            return new_prefix + phone_number[len(old_prefix):]
+    
+    # Return original if no prefix match
+    return phone_number
+
 
 for filename in os.listdir(input_dir):
     if filename.endswith(".xlsx"):
@@ -84,7 +125,8 @@ for filename in os.listdir(input_dir):
                     # Check if the Phone column exists
                     phone_column = None
                     possible_phone_columns = ['DIEN THOAI', 'Số điện thoại', 'SĐT', 'SDT', 'phone', 
-                                             'Điện thoại', 'PHONE', 'Phone', 'Mobile']
+                                             'Điện thoại', 'PHONE', 'Phone', 'Mobile', 'Tel',
+                                             'Telephone', 'Contact', 'SỐ ĐIỆN THOẠI', 'ĐIỆN THOẠI']
                     
                     for col in possible_phone_columns:
                         if col in df.columns:
@@ -92,6 +134,36 @@ for filename in os.listdir(input_dir):
                             found_header = True
                             header_row = test_row
                             break
+                    
+                    # If no named column found, look for columns with phone-like patterns
+                    if not found_header:
+                        best_match_col = None
+                        max_phone_count = 0
+                        
+                        # Function to check if a string looks like a phone number
+                        def looks_like_phone(s):
+                            if pd.isna(s):
+                                return False
+                            digits = re.sub(r'\D', '', str(s))
+                            return len(digits) >= 9 and len(digits) <= 15
+                        
+                        # Check each column for phone-like patterns
+                        for col in df.columns:
+                            # Count how many values in this column look like phone numbers
+                            phone_like_count = df[col].apply(looks_like_phone).sum()
+                            
+                            # If more than 50% of non-empty cells look like phone numbers and it's better than previous best
+                            if phone_like_count > 0:
+                                non_empty_count = df[col].count()
+                                if non_empty_count > 0 and phone_like_count/non_empty_count > 0.3 and phone_like_count > max_phone_count:
+                                    max_phone_count = phone_like_count
+                                    best_match_col = col
+                        
+                        if best_match_col:
+                            phone_column = best_match_col
+                            found_header = True
+                            header_row = test_row
+                            print(f"  Found likely phone column '{phone_column}' with {max_phone_count} phone-like values")
                     
                     if found_header:
                         print(f"  Found header at row {test_row+1} with column '{phone_column}'")
@@ -102,7 +174,7 @@ for filename in os.listdir(input_dir):
                     continue  # Try next header row
             
             if not found_header:
-                print(f"  Error: No valid header with phone column found in {filename}. Available columns in first row: {list(pd.read_excel(file_path, engine='openpyxl', header=0).columns)}")
+                print(f"  Error: No valid header with phone column found in {filename}.")
                 continue
             
             # Create a complete dataframe with all rows preserved

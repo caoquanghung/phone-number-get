@@ -8,4 +8,4 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Set the entrypoint
-ENTRYPOINT ["python"]
+ENTRYPOINT ["python", "/app/phonenumber.py"]
